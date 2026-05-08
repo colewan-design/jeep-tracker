@@ -1,97 +1,113 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Jeep Tracker — Mobile App
 
-# Getting Started
+React Native app for real-time jeepney tracking. Drivers share their live GPS location; passengers watch it on a map with a breadcrumb trail and animated marker.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## Architecture
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+```
+src/
+├── api/axios.js          — Axios instance pointed at the API base URL
+├── context/AuthContext.js — Login state, token storage, role routing
+├── screens/
+│   ├── LoginScreen.js
+│   ├── DriverScreen.js   — GPS tracking, jeep management
+│   └── PassengerScreen.js — Live map, trail, offline status
+└── utils/echo.js         — Laravel Echo + Pusher WebSocket setup
 ```
 
-## Step 2: Build and run your app
+**Backend:** Laravel 11 API at `https://jeep-tracker.eishipartners.com/api`  
+**WebSocket:** Pusher (cluster `ap1`) — channel `jeep.{id}`
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+---
 
-### Android
+## Roles
 
-```sh
-# Using npm
-npm run android
+| Role | What they see |
+|------|---------------|
+| Driver | Their own jeeps only. Can add jeeps, start/stop GPS tracking. |
+| Passenger | All jeeps. Can select one to track on the map. |
 
-# OR using Yarn
-yarn android
+---
+
+## Driver Screen
+
+- Lists jeeps owned by the driver (`GET /api/jeeps`)
+- **+ Add** button opens a modal to create a new jeep (name, plate, route, capacity) — posts to `POST /api/jeeps`
+- **Start Tracking** requests GPS permission and begins `watchPosition` with `distanceFilter: 10` (only fires after 10m of movement)
+- Each GPS update posts to `POST /api/jeeps/{id}/location` — the backend broadcasts `location.updated` to Pusher
+- **Stop Tracking** calls `PATCH /api/jeeps/{id}` with `{ status: 'inactive' }` then clears the GPS watch — triggers `status.changed` broadcast so passengers go offline immediately
+
+---
+
+## Passenger Screen
+
+- Fetches all jeeps on mount (`GET /api/jeeps`)
+- Selecting a chip runs a two-phase fetch:
+  1. `GET /api/jeeps/{id}/location` — shows the marker immediately
+  2. `GET /api/jeeps/{id}/location/history?limit=60` — loads the last 60 GPS points to draw the breadcrumb trail
+- Subscribes to Pusher channel `jeep.{id}`:
+  - `location.updated` → appends to trail, calls `animateMarkerToCoordinate` for smooth glide
+  - `status.changed` → updates online/offline indicator
+- Info bar shows jeep name, speed, distance to passenger, and a LIVE/OFFLINE status dot
+
+---
+
+## WebSocket Setup (`src/utils/echo.js`)
+
+```js
+import Echo from 'laravel-echo';
+import PusherModule from 'pusher-js';
+const Pusher = PusherModule.Pusher ?? PusherModule;
+global.Pusher = Pusher;
+
+const echo = new Echo({
+  broadcaster: 'pusher',
+  key: '0f12289adb56149777a9',
+  cluster: 'ap1',
+  forceTLS: true,
+});
 ```
 
-### iOS
+`pusher-js` exports the class as a named export (`module.exports.Pusher`), not the default. The `?? PusherModule` fallback handles version differences.
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+---
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+## Known Build Quirk — sourceMappingURL
 
-```sh
-bundle install
+Metro tries to resolve `//# sourceMappingURL=pusher.js.map` comments as module imports and crashes. A postinstall script strips these comments from the pusher-js and laravel-echo dist files:
+
+```
+scripts/strip-all-sourcemaps.js
 ```
 
-Then, and every time you update your native dependencies, run:
+Runs automatically via `"postinstall": "node scripts/strip-all-sourcemaps.js"` in `package.json`. Re-runs on every `npm install` in case package updates restore the originals.
 
-```sh
-bundle exec pod install
+See `fix-explanation/2026-05-08-metro-sourcemap-bundler-error.md` in the API repo for full details.
+
+---
+
+## Building
+
+```bash
+npm install          # also runs postinstall strip script
+npx react-native run-android
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+Release APK:
+```bash
+cd android
+./gradlew assembleRelease
+# APK at android/app/build/outputs/apk/release/app-release.apk
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Environment
 
-## Step 3: Modify your app
+The API base URL is set in `src/api/axios.js`. Update it if the server changes:
 
-Now that you have successfully run the app, let's make changes!
-
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
-
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
-
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
-
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+```js
+baseURL: 'https://jeep-tracker.eishipartners.com/api',
+```
