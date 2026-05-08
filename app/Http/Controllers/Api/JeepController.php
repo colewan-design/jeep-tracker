@@ -10,11 +10,14 @@ class JeepController extends Controller
 {
     public function index()
     {
-        $jeeps = Jeep::with('latestLocation')
-            ->where('user_id', auth()->id())
-            ->get();
+        $user = auth()->user();
+        $query = Jeep::with('latestLocation');
 
-        return response()->json($jeeps);
+        if ($user->role === 'driver') {
+            $query->where('user_id', $user->id);
+        }
+
+        return response()->json($query->get());
     }
 
     public function store(Request $request)
