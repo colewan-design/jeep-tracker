@@ -23,6 +23,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    public function jeeps()
+    {
+        return $this->hasMany(Jeep::class);
+    }
+
     protected function casts(): array
     {
         return [
