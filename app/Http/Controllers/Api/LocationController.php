@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\JeepLocationUpdated;
 use App\Http\Controllers\Controller;
 use App\Models\Jeep;
 use App\Models\JeepLocation;
@@ -30,6 +31,8 @@ class LocationController extends Controller
         ]);
 
         $jeep->update(['status' => 'active']);
+
+        broadcast(new JeepLocationUpdated($jeep, $location));
 
         return response()->json([
             'message'  => 'Location updated.',
