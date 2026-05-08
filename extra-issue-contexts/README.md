@@ -1,77 +1,46 @@
 # Extra Issue Contexts
 
-Reference materials, screenshots, and documentation for specific issues.
-Each issue gets its own subfolder.
+Reference materials attached to specific issues — screenshots, error logs, documentation snippets, API specs, etc.
 
----
-
-## Folder Structure
-
+## Structure
+Each issue gets its own subfolder:
 ```
 extra-issue-contexts/
-├── README.md               ← you are here
-├── issue-001-gradle-build/ ← one folder per issue
-│   ├── context.md          ← what the issue is, what was tried
-│   ├── screenshot-1.png    ← any screenshots / error logs saved
-│   └── reference-links.md  ← docs / SO posts / GitHub issues that helped
-└── issue-002-gps-timeout/
-    └── ...
+├── issue-<id>-short-description/
+│   ├── README.md        ← what the issue is and what resources are here
+│   ├── screenshot-1.png
+│   ├── error-log.txt
+│   └── ref-docs.md
 ```
 
----
-
-## How to Use
-
-1. When you hit a new issue, create a subfolder: `issue-NNN-short-name/`
-2. Inside it, create a `context.md` using the template below
-3. Drop any screenshots, exported logs, or saved documentation in the same folder
-4. Link the relevant `fix-explanation` log once the issue is resolved
-
----
-
-## context.md Template
-
-```markdown
-# Issue: [Short Title]
-
-## Summary
-One paragraph describing what the problem is.
-
-## Environment
-- RN version:
-- Device:
-- Build type: debug / release
-
-## Steps to Reproduce
-1.
-2.
-3.
-
-## Error Message / Log
-\`\`\`
-paste error here
-\`\`\`
-
-## What Was Already Tried
-- Tried X → result
-- Tried Y → result
-
-## References
-- [Link title](url)
-
-## Status
-- [ ] Open
-- [ ] In progress
-- [ ] Resolved → see fix-explanation/[filename].md
+## Subfolder Naming
 ```
+issue-<ticket-or-number>-<short-slug>
+```
+Examples:
+- `issue-12-gps-not-updating`
+- `issue-auth-token-expiry`
+- `issue-jeep-route-map-blank`
 
----
+## Issue README Format
+Each subfolder should have a `README.md`:
 
-## Active Issues
+```md
+## Issue: [Short Title]
 
-| # | Folder | Summary | Status |
-|---|--------|---------|--------|
-| 001 | `issue-001-gradle-build/` | async-storage v3 maven artifact missing | Resolved |
-| 002 | `issue-002-gps-fused-location/` | FusedLocationProviderClient IncompatibleClassChangeError | Resolved |
-| 003 | `issue-003-gps-timeout/` | GPS timed out — watchPosition fix | Resolved |
-| 004 | `issue-004-maps-white-screen/` | Google Maps white screen — missing API key | In progress |
+### Problem
+What's going wrong. Include error messages verbatim if any.
+
+### Resources in This Folder
+| File | Description |
+|------|-------------|
+| screenshot-1.png | UI state when the bug occurs |
+| error-log.txt | Laravel log dump |
+
+### Relevant Code Areas
+- `app/Http/Controllers/...`
+- `routes/api.php` line X
+
+### Notes
+Anything else relevant — related issues, attempted fixes, etc.
+```

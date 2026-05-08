@@ -1,49 +1,21 @@
-# Fix Explanation Logs
+# Fix Explanations
 
-Every time a fix is applied, a log file is created here.
-Read these to understand what changed, why, and how to test it.
+Every fix Claude does gets logged here so you can read it at your own pace — no more scrambling to re-read the chat. One file per fix.
 
----
-
-## Log Index
-
-| File | Fix Summary | Date |
-|------|-------------|------|
-| [FIX-001-async-storage-downgrade.md](./FIX-001-async-storage-downgrade.md) | Downgraded async-storage v3 → v2 | 2026-05-07 |
-| [FIX-002-new-arch-disabled.md](./FIX-002-new-arch-disabled.md) | Disabled New Architecture (later reverted) | 2026-05-07 |
-| [FIX-003-geolocation-library-swap.md](./FIX-003-geolocation-library-swap.md) | Replaced react-native-geolocation-service with @react-native-community/geolocation | 2026-05-07 |
-| [FIX-004-watchposition-gps-timeout.md](./FIX-004-watchposition-gps-timeout.md) | Replaced setInterval+getCurrentPosition with watchPosition | 2026-05-07 |
-| [FIX-005-passenger-location-response.md](./FIX-005-passenger-location-response.md) | Fixed passenger screen reading wrong API response field | 2026-05-07 |
-| [FIX-006-google-maps-api-key.md](./FIX-006-google-maps-api-key.md) | Added Google Maps API key to AndroidManifest | 2026-05-07 |
-| [FIX-007-ui-redesign.md](./FIX-007-ui-redesign.md) | Full UI redesign — modern dark navy theme | 2026-05-07 |
-| [FIX-008-passenger-map.md](./FIX-008-passenger-map.md) | Added live map to passenger screen with distance | 2026-05-07 |
-
----
-
-## File Naming Convention
-
+## File Naming
 ```
-FIX-[number]-[short-kebab-description].md
+YYYY-MM-DD-<short-slug>.md
 ```
+Examples:
+- `2026-05-08-gps-broadcast-null-crash.md`
+- `2026-05-09-auth-token-not-refreshing.md`
 
-## Log Template
+## What Each File Contains
+1. **What was broken** — plain English, no jargon
+2. **Root cause** — the actual reason it was failing
+3. **What was changed** — files edited, what specifically changed and why
+4. **How to test** — step-by-step instructions to verify the fix works
+5. **Watch out for** — edge cases or things that could break if something else changes
 
-```markdown
-# FIX-NNN: Short Title
-
-## Problem
-What was broken and how it showed up.
-
-## Root Cause
-Why it was broken.
-
-## What Changed
-- File: `src/...`  
-  Change: description
-
-## How to Test
-Step by step to confirm the fix works.
-
-## Notes
-Anything worth remembering.
-```
+## Template
+See `_template.md` in this folder.
