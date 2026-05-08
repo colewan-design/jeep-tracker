@@ -89,7 +89,7 @@ export default function DriverScreen() {
       err => console.warn('GPS error:', err.message),
       {
         enableHighAccuracy: false,
-        distanceFilter: 0,
+        distanceFilter: 10,
         interval: 5000,
         fastestInterval: 3000,
       },

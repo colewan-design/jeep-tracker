@@ -43,6 +43,7 @@ export default function PassengerScreen() {
   const [loadingJeeps, setLoadingJeeps] = useState(true);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [jeepTrail, setJeepTrail] = useState([]);
+  const [jeepActive, setJeepActive] = useState(false);
   const channelRef = useRef(null);
   const subscribedJeepId = useRef(null);
   const watchRef = useRef(null);
@@ -69,6 +70,7 @@ export default function PassengerScreen() {
       setJeepLocation(null);
       setJeepTrail([]);
       setLastUpdated(null);
+      setJeepActive(false);
     }
     return () => unsubscribeFromJeep();
   }, [selectedJeep]);
@@ -130,6 +132,7 @@ export default function PassengerScreen() {
       const {data} = await api.get(`/jeeps/${jeepId}/location`);
       if (data?.location?.latitude) {
         setJeepLocation(data.location);
+        setJeepActive(data.jeep?.status === 'active');
         setLastUpdated(new Date());
       }
     } catch {
@@ -168,10 +171,16 @@ export default function PassengerScreen() {
           };
           setJeepLocation(payload.location);
           setJeepTrail(prev => [...prev.slice(-59), coord]);
+          setJeepActive(true);
           setLastUpdated(new Date());
           if (jeepMarkerRef.current) {
             jeepMarkerRef.current.animateMarkerToCoordinate(coord, 1000);
           }
+        }
+      })
+      .listen('.status.changed', payload => {
+        if (payload?.status) {
+          setJeepActive(payload.status === 'active');
         }
       });
   }
@@ -337,11 +346,13 @@ export default function PassengerScreen() {
           <View style={styles.infoDivider} />
           <View style={styles.infoItem}>
             <View style={styles.liveRow}>
-              <View style={styles.liveDot} />
-              <Text style={styles.infoLabel}>LIVE</Text>
+              <View style={[styles.liveDot, !jeepActive && styles.liveDotOffline]} />
+              <Text style={[styles.infoLabel, !jeepActive && styles.infoLabelOffline]}>
+                {jeepActive ? 'LIVE' : 'OFFLINE'}
+              </Text>
             </View>
-            <Text style={styles.infoValue}>
-              {lastUpdated?.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'})}
+            <Text style={[styles.infoValue, !jeepActive && styles.infoValueOffline]}>
+              {lastUpdated?.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) ?? '—'}
             </Text>
           </View>
         </View>
@@ -461,4 +472,7 @@ const styles = StyleSheet.create({
   infoValueDistance: {color: '#34D399'},
   liveRow: {flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 3},
   liveDot: {width: 6, height: 6, borderRadius: 3, backgroundColor: '#22C55E'},
+  liveDotOffline: {backgroundColor: '#EF4444'},
+  infoLabelOffline: {color: '#EF4444'},
+  infoValueOffline: {color: '#64748B'},
 });
