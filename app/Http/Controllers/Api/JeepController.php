@@ -10,7 +10,9 @@ class JeepController extends Controller
 {
     public function index()
     {
-        $jeeps = Jeep::with('latestLocation')->get();
+        $jeeps = Jeep::with('latestLocation')
+            ->where('user_id', auth()->id())
+            ->get();
 
         return response()->json($jeeps);
     }
@@ -22,10 +24,16 @@ class JeepController extends Controller
             'plate_number' => 'required|string|max:20|unique:jeeps',
             'route_name'   => 'nullable|string|max:255',
             'capacity'     => 'nullable|integer|min:1',
-            'status'       => 'sometimes|in:active,inactive,maintenance',
         ]);
 
-        $jeep = Jeep::create($request->all());
+        $jeep = Jeep::create([
+            'user_id'      => auth()->id(),
+            'name'         => $request->name,
+            'plate_number' => $request->plate_number,
+            'route_name'   => $request->route_name,
+            'capacity'     => $request->capacity,
+            'status'       => 'inactive',
+        ]);
 
         return response()->json([
             'message' => 'Jeep created successfully.',

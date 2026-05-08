@@ -10,6 +10,7 @@ class Jeep extends Model
     use HasFactory;
 
     protected $fillable = [
+        'user_id',
         'name',
         'plate_number',
         'route_name',
