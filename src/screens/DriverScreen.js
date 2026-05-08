@@ -31,6 +31,7 @@ export default function DriverScreen() {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({name: '', plate_number: '', route_name: '', capacity: ''});
   const watchRef = useRef(null);
+  const lastUploadedCoord = useRef(null);
 
   useEffect(() => {
     fetchJeeps();
@@ -70,11 +71,18 @@ export default function DriverScreen() {
     }
     setTracking(true);
     const jeepId = selectedJeep.id;
+    lastUploadedCoord.current = null;
     watchRef.current = Geolocation.watchPosition(
       async pos => {
+        const {latitude, longitude} = pos.coords;
+        const last = lastUploadedCoord.current;
+        if (last && last.latitude === latitude && last.longitude === longitude) {
+          return;
+        }
+        lastUploadedCoord.current = {latitude, longitude};
         const coords = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
+          latitude,
+          longitude,
           speed: pos.coords.speed ?? 0,
           heading: pos.coords.heading ?? 0,
         };
@@ -101,6 +109,7 @@ export default function DriverScreen() {
       Geolocation.clearWatch(watchRef.current);
       watchRef.current = null;
     }
+    lastUploadedCoord.current = null;
     setTracking(false);
     setLocation(null);
     setUpdateCount(0);
