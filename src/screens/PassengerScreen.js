@@ -86,8 +86,8 @@ export default function PassengerScreen() {
       );
     } else if (jeepLocation && mapRef.current) {
       mapRef.current.animateToRegion({
-        latitude: parseFloat(jeepLocation.latitude),
-        longitude: parseFloat(jeepLocation.longitude),
+        latitude: jeepLocation.latitude,
+        longitude: jeepLocation.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
@@ -124,14 +124,17 @@ export default function PassengerScreen() {
     }
   }
 
+  function normalizeLoc(loc) {
+    return {...loc, latitude: parseFloat(loc.latitude), longitude: parseFloat(loc.longitude)};
+  }
+
   async function fetchHistory(jeepId) {
     if (!jeepId) return;
 
-    // Always fetch the current location first so the marker shows immediately
     try {
       const {data} = await api.get(`/jeeps/${jeepId}/location`);
       if (data?.location?.latitude) {
-        setJeepLocation(data.location);
+        setJeepLocation(normalizeLoc(data.location));
         setJeepActive(data.jeep?.status === 'active');
         setLastUpdated(new Date());
       }
@@ -139,7 +142,6 @@ export default function PassengerScreen() {
       // jeep not yet active
     }
 
-    // Then fetch trail history in the background
     try {
       const {data} = await api.get(`/jeeps/${jeepId}/location/history`, {
         params: {limit: 60},
@@ -150,7 +152,7 @@ export default function PassengerScreen() {
         .reverse();
       if (points.length > 0) {
         setJeepTrail(points);
-        setJeepLocation(data.locations[0]);
+        setJeepLocation(normalizeLoc(data.locations[0]));
         setLastUpdated(new Date());
       }
     } catch {
@@ -169,7 +171,7 @@ export default function PassengerScreen() {
             latitude: parseFloat(payload.location.latitude),
             longitude: parseFloat(payload.location.longitude),
           };
-          setJeepLocation(payload.location);
+          setJeepLocation(normalizeLoc(payload.location));
           setJeepTrail(prev => [...prev.slice(-59), coord]);
           setJeepActive(true);
           setLastUpdated(new Date());
@@ -198,8 +200,8 @@ export default function PassengerScreen() {
       ? haversineKm(
           passengerLocation.latitude,
           passengerLocation.longitude,
-          parseFloat(jeepLocation.latitude),
-          parseFloat(jeepLocation.longitude),
+          jeepLocation.latitude,
+          jeepLocation.longitude,
         )
       : null;
 
@@ -293,8 +295,8 @@ export default function PassengerScreen() {
             <Marker
               ref={jeepMarkerRef}
               coordinate={{
-                latitude: parseFloat(jeepLocation.latitude),
-                longitude: parseFloat(jeepLocation.longitude),
+                latitude: jeepLocation.latitude,
+                longitude: jeepLocation.longitude,
               }}
               title={selectedJeep?.name}
               description={`Speed: ${speedKmh} km/h`}
