@@ -107,6 +107,13 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        force 'com.google.android.gms:play-services-location:20.0.0'
+        force 'com.google.android.gms:play-services-base:18.2.0'
+    }
+}
+
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
