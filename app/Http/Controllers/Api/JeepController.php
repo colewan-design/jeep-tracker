@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Events\JeepStatusChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Jeep;
 use Illuminate\Http\Request;
@@ -62,6 +63,10 @@ class JeepController extends Controller
         ]);
 
         $jeep->update($request->all());
+
+        if ($request->has('status')) {
+            broadcast(new JeepStatusChanged($jeep));
+        }
 
         return response()->json([
             'message' => 'Jeep updated successfully.',
