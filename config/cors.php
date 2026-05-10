@@ -6,9 +6,9 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
+        'https://api.komyuter.com',
         'https://komyuter.com',
         'https://www.komyuter.com',
-        'https://jeep-tracker.eishipartners.com',
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:3000',
