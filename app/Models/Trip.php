@@ -16,13 +16,17 @@ class Trip extends Model
         'status',
         'started_at',
         'ended_at',
+        'avg_speed',
+        'max_speed',
+        'route_points',
     ];
 
     protected function casts(): array
     {
         return [
-            'started_at' => 'datetime',
-            'ended_at'   => 'datetime',
+            'started_at'   => 'datetime',
+            'ended_at'     => 'datetime',
+            'route_points' => 'array',
         ];
     }
 
