@@ -5,10 +5,16 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\JeepController;
 use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\RouteController;
+use App\Http\Controllers\Api\JeepneyRouteController;
+use App\Http\Controllers\Api\BookmarkController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
+// Jeepney routes are readable without auth (guests can browse)
+Route::get('/jeepney-routes', [JeepneyRouteController::class, 'index']);
+Route::get('/jeepney-routes/{jeepneyRoute}', [JeepneyRouteController::class, 'show']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -25,6 +31,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/jeeps/{jeep}/location', [LocationController::class, 'current']);
     Route::get('/jeeps/{jeep}/location/history', [LocationController::class, 'history']);
 
-    // Routes / trips
+    // Trips
     Route::apiResource('jeeps.trips', RouteController::class)->shallow();
+
+    // Bookmarks
+    Route::get('/user/saved-routes', [BookmarkController::class, 'index']);
+    Route::post('/user/saved-routes', [BookmarkController::class, 'store']);
+    Route::delete('/user/saved-routes/{jeepneyRouteId}', [BookmarkController::class, 'destroy']);
 });
