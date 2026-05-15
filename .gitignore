@@ -66,6 +66,17 @@ yarn-error.log
 # testing
 /coverage
 
+# Laravel
+.env
+.env.backup
+/vendor/
+bootstrap/cache/*.php
+storage/*.key
+storage/logs/*.log
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
 # Yarn
 .yarn/*
 !.yarn/patches
