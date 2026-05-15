@@ -16,16 +16,26 @@ return new class extends Migration
             NOT NULL DEFAULT 'waiting'");
 
         Schema::table('trips', function (Blueprint $table) {
-            $table->foreignId('jeepney_route_id')
-                  ->nullable()
-                  ->after('jeep_id')
-                  ->constrained()
-                  ->nullOnDelete();
+            if (!Schema::hasColumn('trips', 'jeepney_route_id')) {
+                $table->foreignId('jeepney_route_id')
+                      ->nullable()
+                      ->after('jeep_id')
+                      ->constrained()
+                      ->nullOnDelete();
+            }
 
-            $table->json('route_points')->nullable()->after('ended_at');
-            $table->float('avg_speed')->nullable()->after('route_points');   // km/h
-            $table->float('max_speed')->nullable()->after('avg_speed');      // km/h
-            $table->unsignedSmallInteger('passenger_count')->nullable()->after('max_speed');
+            if (!Schema::hasColumn('trips', 'route_points')) {
+                $table->json('route_points')->nullable()->after('ended_at');
+            }
+            if (!Schema::hasColumn('trips', 'avg_speed')) {
+                $table->float('avg_speed')->nullable()->after('route_points');
+            }
+            if (!Schema::hasColumn('trips', 'max_speed')) {
+                $table->float('max_speed')->nullable()->after('avg_speed');
+            }
+            if (!Schema::hasColumn('trips', 'passenger_count')) {
+                $table->unsignedSmallInteger('passenger_count')->nullable()->after('max_speed');
+            }
         });
     }
 
