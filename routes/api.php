@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\RouteController;
 use App\Http\Controllers\Api\JeepneyRouteController;
 use App\Http\Controllers\Api\BookmarkController;
+use App\Http\Controllers\Api\DriversController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -38,4 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/saved-routes', [BookmarkController::class, 'index']);
     Route::post('/user/saved-routes', [BookmarkController::class, 'store']);
     Route::delete('/user/saved-routes/{jeepneyRouteId}', [BookmarkController::class, 'destroy']);
+
+    // Driver management (admin)
+    Route::get('/drivers', [DriversController::class, 'index']);
+    Route::post('/drivers/{user}/token', [DriversController::class, 'generateToken']);
 });
