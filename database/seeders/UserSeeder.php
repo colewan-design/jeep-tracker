@@ -11,12 +11,14 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Admin account
-        User::create([
-            'name'     => 'Admin',
-            'email'    => 'admin@jeeptracker.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'admin',
-        ]);
+        User::firstOrCreate(
+            ['email' => 'admin@jeeptracker.com'],
+            [
+                'name'     => 'Admin',
+                'password' => Hash::make('password123'),
+                'role'     => 'admin',
+            ]
+        );
 
         // Sample drivers
         $drivers = [
