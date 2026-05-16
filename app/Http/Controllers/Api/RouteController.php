@@ -6,12 +6,32 @@ use App\Http\Controllers\Controller;
 use App\Models\Jeep;
 use App\Models\Trip;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class RouteController extends Controller
 {
     public function index(Jeep $jeep)
     {
         $trips = $jeep->trips()->orderByDesc('started_at')->get();
+
+        return response()->json($trips);
+    }
+
+    // GET /trips — all trips for the authenticated driver across all their jeeps
+    public function driverTrips(Request $request)
+    {
+        $limit = min((int) $request->query('limit', 20), 100);
+
+        $trips = Trip::whereHas('jeep', fn($q) => $q->where('user_id', Auth::id()))
+            ->with('jeep:id,name,plate_number')
+            ->orderByDesc('started_at')
+            ->limit($limit)
+            ->get()
+            ->map(function ($trip) {
+                return array_merge($trip->toArray(), [
+                    'jeep_name' => $trip->jeep?->name,
+                ]);
+            });
 
         return response()->json($trips);
     }
@@ -53,6 +73,7 @@ class RouteController extends Controller
             'destination'     => 'sometimes|string|max:255',
             'status'          => 'sometimes|in:waiting,boarding,in_transit,ongoing,completed,cancelled',
             'ended_at'        => 'nullable|date',
+            'distance_km'     => 'nullable|numeric|min:0',
             'route_points'    => 'nullable|array',
             'avg_speed'       => 'nullable|numeric',
             'max_speed'       => 'nullable|numeric',
@@ -65,7 +86,7 @@ class RouteController extends Controller
 
         $trip->update($request->only([
             'origin', 'destination', 'status', 'ended_at',
-            'route_points', 'avg_speed', 'max_speed', 'passenger_count',
+            'distance_km', 'route_points', 'avg_speed', 'max_speed', 'passenger_count',
         ]));
 
         return response()->json([

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DriversController;
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/driver-access', [DriversController::class, 'access']);
 
 // Jeepney routes are readable without auth (guests can browse)
 Route::get('/jeepney-routes', [JeepneyRouteController::class, 'index']);
@@ -33,6 +34,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/jeeps/{jeep}/location/history', [LocationController::class, 'history']);
 
     // Trips
+    Route::get('/trips', [RouteController::class, 'driverTrips']);
     Route::apiResource('jeeps.trips', RouteController::class)->shallow();
 
     // Bookmarks

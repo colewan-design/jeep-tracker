@@ -17,11 +17,14 @@ class Trip extends Model
         'status',
         'started_at',
         'ended_at',
+        'distance_km',
         'route_points',
         'avg_speed',
         'max_speed',
         'passenger_count',
     ];
+
+    protected $appends = ['duration_secs'];
 
     protected function casts(): array
     {
@@ -31,7 +34,16 @@ class Trip extends Model
             'route_points' => 'array',
             'avg_speed'    => 'float',
             'max_speed'    => 'float',
+            'distance_km'  => 'float',
         ];
+    }
+
+    public function getDurationSecsAttribute(): ?int
+    {
+        if ($this->started_at && $this->ended_at) {
+            return (int) $this->ended_at->diffInSeconds($this->started_at);
+        }
+        return null;
     }
 
     public function jeep()
