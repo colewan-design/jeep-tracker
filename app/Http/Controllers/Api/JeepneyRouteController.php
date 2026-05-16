@@ -44,6 +44,39 @@ class JeepneyRouteController extends Controller
     }
 
     /**
+     * GET /active-jeeps
+     * All currently active jeeps across every route, with latest location.
+     * Public — no auth required.
+     */
+    public function activeJeeps()
+    {
+        $jeeps = \App\Models\Trip::where('status', 'in_transit')
+            ->with(['jeep.latestLocation', 'jeepneyRoute:id,name,origin,destination,fare_regular,vehicle_type'])
+            ->whereHas('jeep', fn ($q) => $q->where('status', 'active'))
+            ->whereNotNull('jeepney_route_id')
+            ->get()
+            ->map(fn ($trip) => [
+                'id'           => $trip->jeep->id,
+                'name'         => $trip->jeep->name,
+                'plate_number' => $trip->jeep->plate_number,
+                'trip_id'      => $trip->id,
+                'trip_status'  => $trip->status,
+                'route'        => $trip->jeepneyRoute,
+                'location'     => $trip->jeep->latestLocation
+                    ? [
+                        'latitude'  => (float) $trip->jeep->latestLocation->latitude,
+                        'longitude' => (float) $trip->jeep->latestLocation->longitude,
+                        'speed'     => (float) ($trip->jeep->latestLocation->speed ?? 0),
+                    ]
+                    : null,
+            ])
+            ->filter(fn ($j) => $j['location'] !== null)
+            ->values();
+
+        return response()->json($jeeps);
+    }
+
+    /**
      * GET /jeepney-routes/{route}
      * Route detail with stops and any currently active jeeps.
      */

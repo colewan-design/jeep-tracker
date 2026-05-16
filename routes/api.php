@@ -17,6 +17,7 @@ Route::post('/driver-access', [DriversController::class, 'access']);
 // Jeepney routes are readable without auth (guests can browse)
 Route::get('/jeepney-routes', [JeepneyRouteController::class, 'index']);
 Route::get('/jeepney-routes/{jeepneyRoute}', [JeepneyRouteController::class, 'show']);
+Route::get('/active-jeeps', [JeepneyRouteController::class, 'activeJeeps']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
