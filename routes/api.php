@@ -10,10 +10,12 @@ use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\DriversController;
 use App\Http\Controllers\Api\SightingController;
 use App\Http\Controllers\Api\VideoExportController;
+use App\Http\Controllers\Api\GoogleAuthController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/auth/google', [GoogleAuthController::class, 'login']);
 Route::post('/driver-access', [DriversController::class, 'access']);
 
 // Jeepney routes are readable without auth (guests can browse)
