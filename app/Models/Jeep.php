@@ -16,6 +16,7 @@ class Jeep extends Model
         'route_name',
         'capacity',
         'status',
+        'seats_available',
     ];
 
     public function locations()

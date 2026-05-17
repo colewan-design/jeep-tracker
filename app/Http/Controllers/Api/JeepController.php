@@ -55,11 +55,12 @@ class JeepController extends Controller
     public function update(Request $request, Jeep $jeep)
     {
         $request->validate([
-            'name'         => 'sometimes|string|max:255',
-            'plate_number' => 'sometimes|string|max:20|unique:jeeps,plate_number,' . $jeep->id,
-            'route_name'   => 'nullable|string|max:255',
-            'capacity'     => 'nullable|integer|min:1',
-            'status'       => 'sometimes|in:active,inactive,maintenance',
+            'name'            => 'sometimes|string|max:255',
+            'plate_number'    => 'sometimes|string|max:20|unique:jeeps,plate_number,' . $jeep->id,
+            'route_name'      => 'nullable|string|max:255',
+            'capacity'        => 'nullable|integer|min:1',
+            'status'          => 'sometimes|in:active,inactive,maintenance',
+            'seats_available' => 'sometimes|in:available,limited,full',
         ]);
 
         $jeep->update($request->all());

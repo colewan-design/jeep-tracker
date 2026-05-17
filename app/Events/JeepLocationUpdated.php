@@ -35,11 +35,12 @@ class JeepLocationUpdated implements ShouldBroadcast
     {
         return [
             'jeep' => [
-                'id'           => $this->jeep->id,
-                'name'         => $this->jeep->name,
-                'plate_number' => $this->jeep->plate_number,
-                'route_name'   => $this->jeep->route_name,
-                'status'       => $this->jeep->status,
+                'id'              => $this->jeep->id,
+                'name'            => $this->jeep->name,
+                'plate_number'    => $this->jeep->plate_number,
+                'route_name'      => $this->jeep->route_name,
+                'status'          => $this->jeep->status,
+                'seats_available' => $this->jeep->seats_available ?? 'available',
             ],
             'location' => [
                 'latitude'    => $this->location->latitude,

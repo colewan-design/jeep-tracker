@@ -71,7 +71,7 @@ class RouteController extends Controller
         $request->validate([
             'origin'          => 'sometimes|string|max:255',
             'destination'     => 'sometimes|string|max:255',
-            'status'          => 'sometimes|in:waiting,boarding,in_transit,ongoing,completed,cancelled',
+            'status'          => 'sometimes|in:waiting,rolling,boarding,in_transit,ongoing,completed,cancelled',
             'ended_at'        => 'nullable|date',
             'distance_km'     => 'nullable|numeric|min:0',
             'route_points'    => 'nullable|array',

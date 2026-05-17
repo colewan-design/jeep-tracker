@@ -21,7 +21,7 @@ class JeepneyRouteController extends Controller
 
         $routes = JeepneyRoute::withCount([
             'trips as active_jeeps_count' => fn ($q) => $q
-                ->where('status', 'in_transit')
+                ->whereNotIn('status', ['completed', 'cancelled'])
                 ->whereHas('jeep', fn ($j) => $j->where('status', 'active')),
         ])->get();
 
@@ -50,27 +50,33 @@ class JeepneyRouteController extends Controller
      */
     public function activeJeeps()
     {
-        $jeeps = \App\Models\Trip::where('status', 'in_transit')
+        $jeeps = \App\Models\Trip::whereNotIn('status', ['completed', 'cancelled'])
             ->with(['jeep.latestLocation', 'jeepneyRoute:id,name,origin,destination,fare_regular,vehicle_type'])
             ->whereHas('jeep', fn ($q) => $q->where('status', 'active'))
             ->whereNotNull('jeepney_route_id')
             ->get()
-            ->map(fn ($trip) => [
-                'id'           => $trip->jeep->id,
-                'name'         => $trip->jeep->name,
-                'plate_number' => $trip->jeep->plate_number,
-                'trip_id'      => $trip->id,
-                'trip_status'  => $trip->status,
-                'route'        => $trip->jeepneyRoute,
-                'location'     => $trip->jeep->latestLocation
-                    ? [
-                        'latitude'  => (float) $trip->jeep->latestLocation->latitude,
-                        'longitude' => (float) $trip->jeep->latestLocation->longitude,
-                        'speed'     => (float) ($trip->jeep->latestLocation->speed ?? 0),
-                    ]
-                    : null,
-            ])
-            ->filter(fn ($j) => $j['location'] !== null)
+            ->map(function ($trip) {
+                $loc = $trip->jeep->latestLocation;
+                if (! $loc) return null;
+
+                return [
+                    'id'              => $trip->jeep->id,
+                    'name'            => $trip->jeep->name,
+                    'plate_number'    => $trip->jeep->plate_number,
+                    'seats_available' => $trip->jeep->seats_available ?? 'available',
+                    'trip_id'         => $trip->id,
+                    'trip_status'     => $trip->status,
+                    'route'           => $trip->jeepneyRoute,
+                    'location'        => [
+                        'latitude'    => (float) $loc->latitude,
+                        'longitude'   => (float) $loc->longitude,
+                        'speed'       => (float) ($loc->speed ?? 0),
+                        'heading'     => (float) ($loc->heading ?? 0),
+                        'recorded_at' => $loc->recorded_at?->toIso8601String(),
+                    ],
+                ];
+            })
+            ->filter()
             ->values();
 
         return response()->json($jeeps);

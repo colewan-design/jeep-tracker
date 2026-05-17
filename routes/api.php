@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\RouteController;
 use App\Http\Controllers\Api\JeepneyRouteController;
 use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\DriversController;
+use App\Http\Controllers\Api\SightingController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -18,6 +19,12 @@ Route::post('/driver-access', [DriversController::class, 'access']);
 Route::get('/jeepney-routes', [JeepneyRouteController::class, 'index']);
 Route::get('/jeepney-routes/{jeepneyRoute}', [JeepneyRouteController::class, 'show']);
 Route::get('/active-jeeps', [JeepneyRouteController::class, 'activeJeeps']);
+
+// Sightings — public read, public write (no auth required for crowdsourcing)
+Route::get('/sightings', [SightingController::class, 'index']);
+Route::post('/sightings', [SightingController::class, 'store']);
+Route::patch('/sightings/{sighting}/confirm', [SightingController::class, 'confirm']);
+Route::patch('/sightings/{sighting}/deny', [SightingController::class, 'deny']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
