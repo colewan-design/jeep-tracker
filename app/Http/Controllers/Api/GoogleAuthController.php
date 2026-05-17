@@ -29,7 +29,7 @@ class GoogleAuthController extends Controller
         $payload = json_decode($response, true);
 
         // Validate audience matches our client ID
-        if (empty($payload['sub']) || ($payload['aud'] ?? '') !== env('GOOGLE_CLIENT_ID')) {
+        if (empty($payload['sub']) || ($payload['aud'] ?? '') !== config('services.google.client_id')) {
             return response()->json(['error' => 'Invalid Google token.'], 401);
         }
 
