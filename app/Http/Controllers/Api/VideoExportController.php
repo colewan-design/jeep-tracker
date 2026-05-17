@@ -11,15 +11,16 @@ use Illuminate\Support\Facades\Storage;
 
 class VideoExportController extends Controller
 {
-    private const WIDTH         = 640;
-    private const HEIGHT        = 360;
-    private const FPS           = 10;
-    private const TARGET_FRAMES = 150;
-    private const TRAIL_PTS     = 40;   // recent path points shown behind jeep
-    private const ZOOM          = 16;   // close birds-eye zoom
+    private const WIDTH         = 720;
+    private const HEIGHT        = 1280; // portrait (matches phone screen)
+    private const FPS           = 30;
+    private const TARGET_FRAMES = 300;
+    private const TRAIL_PTS     = 60;   // traveled path behind jeep
+    private const AHEAD_PTS     = 999;  // remaining path ahead — show all
+    private const ZOOM          = 17;   // same as playback
     private const CONCURRENCY   = 10;
-    private const MAPBOX_STYLE  = 'mapbox/dark-v11';
-    private const VIDEO_VERSION = 2;    // bump to bust cached videos
+    private const MAPBOX_STYLE  = 'teekunana/cmp9b3i4r006p01sn0xyqhyre'; // custom style
+    private const VIDEO_VERSION = 3;    // bump to bust cached videos
 
     public function export(Trip $trip)
     {
@@ -45,31 +46,32 @@ class VideoExportController extends Controller
         $tmpDir = storage_path('app/tmp/video_' . $trip->id . '_' . time());
         mkdir($tmpDir, 0755, true);
 
-        // Build one Guzzle request per frame — camera follows the jeep
+        // Build one Guzzle request per frame — matches the in-app playback look
         $client   = new Client(['timeout' => 20]);
         $requests = function () use ($frames, $token) {
-            $prevBearing = 0;
+            $total = count($frames);
             foreach ($frames as $i => $pt) {
                 $lon = round($pt['longitude'], 6);
                 $lat = round($pt['latitude'],  6);
 
-                // Bearing: direction of travel from previous frame
-                if ($i > 0) {
-                    $prevBearing = $this->calcBearing($frames[$i - 1], $pt);
-                }
-                $bearing = round($prevBearing, 1);
+                // Traveled path behind jeep — gray (#3A3A3C), width 6
+                $trailStart   = max(0, $i - self::TRAIL_PTS);
+                $trail        = array_slice($frames, $trailStart, $i - $trailStart + 1);
+                $trailPoly    = rawurlencode($this->encodePolyline($trail));
 
-                // Trail: last TRAIL_PTS traveled points for the path behind the jeep
-                $trailStart = max(0, $i - self::TRAIL_PTS);
-                $trail      = array_slice($frames, $trailStart, $i - $trailStart + 1);
-                $poly       = rawurlencode($this->encodePolyline($trail));
+                // Remaining path ahead — cyan (#00C8FF), width 8
+                $aheadEnd     = min($total - 1, $i + self::AHEAD_PTS);
+                $ahead        = array_slice($frames, $i, $aheadEnd - $i + 1);
+                $aheadPoly    = rawurlencode($this->encodePolyline($ahead));
 
-                // Camera: centered on jeep, birds-eye zoom, rotated to direction of travel
-                $camera  = "{$lon},{$lat}," . self::ZOOM . ",{$bearing},0";
-                $overlay = "path-4+0A84FF-0.9({$poly}),pin-s+FF453A({$lon},{$lat})";
+                // Flat north-up camera, jeep centered (pitch=0, bearing=0 — same as playback)
+                $camera  = "{$lon},{$lat}," . self::ZOOM . ",0,0";
+
+                // White arrow pin at jeep position to match the on-screen arrow
+                $overlay = "path-6+3A3A3C-0.85({$trailPoly}),path-8+00C8FF({$aheadPoly}),pin-s+FFFFFF({$lon},{$lat})";
 
                 $url = sprintf(
-                    'https://api.mapbox.com/styles/v1/%s/static/%s/%s/%dx%d@2x?access_token=%s&logo=false&attribution=false',
+                    'https://api.mapbox.com/styles/v1/%s/static/%s/%s/%dx%d?access_token=%s&logo=false&attribution=false',
                     self::MAPBOX_STYLE,
                     $overlay,
                     $camera,
@@ -81,23 +83,37 @@ class VideoExportController extends Controller
             }
         };
 
-        $saved = [];
-        $pool  = new Pool($client, $requests(), [
+        $saved  = [];
+        $errors = [];
+        $pool   = new Pool($client, $requests(), [
             'concurrency' => self::CONCURRENCY,
-            'fulfilled'   => function ($response, int $i) use ($tmpDir, &$saved) {
+            'fulfilled'   => function ($response, int $i) use ($tmpDir, &$saved, &$errors) {
+                $body = $response->getBody()->getContents();
+                // Mapbox returns JSON error bodies with 4xx status
+                if ($response->getStatusCode() >= 400) {
+                    $errors[$i] = 'HTTP ' . $response->getStatusCode() . ': ' . substr($body, 0, 200);
+                    return;
+                }
                 $file = sprintf('%s/frame_%05d.png', $tmpDir, $i);
-                file_put_contents($file, $response->getBody()->getContents());
+                file_put_contents($file, $body);
                 $saved[$i] = $file;
             },
-            'rejected'    => function ($reason, int $i) {
-                // frame skipped on error — FFmpeg concat will still work
+            'rejected'    => function ($reason, int $i) use (&$errors) {
+                $errors[$i] = $reason->getMessage();
             },
         ]);
         $pool->promise()->wait();
 
         if (count($saved) < 2) {
             $this->cleanup($tmpDir);
-            return response()->json(['error' => 'Failed to fetch enough frames from Mapbox.'], 500);
+            $sample = array_slice($errors, 0, 3, true);
+            return response()->json([
+                'error'  => 'Failed to fetch enough frames from Mapbox.',
+                'frames_ok'   => count($saved),
+                'frames_fail' => count($errors),
+                'sample_errors' => $sample,
+                'token_set' => !empty(env('MAPBOX_TOKEN')),
+            ], 500);
         }
 
         ksort($saved);
@@ -113,7 +129,7 @@ class VideoExportController extends Controller
         Storage::disk('public')->makeDirectory('videos');
         $outPath = storage_path("app/public/{$videoPath}");
         $cmd     = sprintf(
-            '%s -y -r %d -f concat -safe 0 -i %s -c:v libx264 -pix_fmt yuv420p -crf 23 -movflags +faststart %s 2>&1',
+            '%s -y -r %d -f concat -safe 0 -i %s -c:v libx264 -pix_fmt yuv420p -crf 20 -preset fast -movflags +faststart %s 2>&1',
             escapeshellarg($ffmpeg),
             self::FPS,
             escapeshellarg($listFile),
