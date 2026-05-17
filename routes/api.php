@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\JeepneyRouteController;
 use App\Http\Controllers\Api\BookmarkController;
 use App\Http\Controllers\Api\DriversController;
 use App\Http\Controllers\Api\SightingController;
+use App\Http\Controllers\Api\VideoExportController;
 
 // Public routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -43,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Trips
     Route::get('/trips', [RouteController::class, 'driverTrips']);
+    Route::post('/trips/{trip}/export-video', [VideoExportController::class, 'export']);
     Route::apiResource('jeeps.trips', RouteController::class)->shallow();
 
     // Bookmarks
