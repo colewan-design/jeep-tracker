@@ -41,7 +41,7 @@ class Trip extends Model
     public function getDurationSecsAttribute(): ?int
     {
         if ($this->started_at && $this->ended_at) {
-            return (int) $this->ended_at->diffInSeconds($this->started_at);
+            return abs((int) $this->started_at->diffInSeconds($this->ended_at));
         }
         return null;
     }

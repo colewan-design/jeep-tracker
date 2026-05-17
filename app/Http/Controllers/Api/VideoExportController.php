@@ -15,9 +15,11 @@ class VideoExportController extends Controller
     private const HEIGHT        = 360;
     private const FPS           = 10;
     private const TARGET_FRAMES = 150;
-    private const MAX_PATH_PTS  = 40;   // max polyline points per frame URL
-    private const CONCURRENCY   = 10;   // parallel Mapbox requests
+    private const TRAIL_PTS     = 40;   // recent path points shown behind jeep
+    private const ZOOM          = 16;   // close birds-eye zoom
+    private const CONCURRENCY   = 10;
     private const MAPBOX_STYLE  = 'mapbox/dark-v11';
+    private const VIDEO_VERSION = 2;    // bump to bust cached videos
 
     public function export(Trip $trip)
     {
@@ -27,45 +29,50 @@ class VideoExportController extends Controller
             return response()->json(['error' => 'Not enough GPS data for this trip.'], 422);
         }
 
-        // Re-use a cached video if it was already generated
-        $videoPath = "videos/trip_{$trip->id}.mp4";
+        // Versioned cache key — bump VIDEO_VERSION to regenerate all
+        $videoPath = "videos/trip_{$trip->id}_v" . self::VIDEO_VERSION . ".mp4";
         if (Storage::disk('public')->exists($videoPath)) {
             return response()->json(['url' => Storage::disk('public')->url($videoPath)]);
         }
 
-        $token    = env('MAPBOX_TOKEN');
-        $ffmpeg   = env('FFMPEG_PATH', 'ffmpeg');
+        $token  = env('MAPBOX_TOKEN');
+        $ffmpeg = env('FFMPEG_PATH', 'ffmpeg');
 
-        // Sample the full route down to TARGET_FRAMES evenly-spaced frames
-        $frames     = $this->sample($points, self::TARGET_FRAMES);
-        $totalFrames = count($frames);
-
-        // Fixed viewport — centered on the full route bounds
-        $lats      = array_column($points, 'latitude');
-        $lons      = array_column($points, 'longitude');
-        $centerLat = (max($lats) + min($lats)) / 2;
-        $centerLon = (max($lons) + min($lons)) / 2;
-        $zoom      = $this->calcZoom(min($lats), max($lats), min($lons), max($lons));
+        // Sample route to TARGET_FRAMES evenly-spaced frames
+        $frames = $this->sample($points, self::TARGET_FRAMES);
 
         // Temp directory for PNG frames
         $tmpDir = storage_path('app/tmp/video_' . $trip->id . '_' . time());
         mkdir($tmpDir, 0755, true);
 
-        // Build one Guzzle request per frame
+        // Build one Guzzle request per frame — camera follows the jeep
         $client   = new Client(['timeout' => 20]);
-        $requests = function () use ($frames, $centerLon, $centerLat, $zoom, $token) {
+        $requests = function () use ($frames, $token) {
+            $prevBearing = 0;
             foreach ($frames as $i => $pt) {
-                $traveled = $this->sample(array_slice($frames, 0, $i + 1), self::MAX_PATH_PTS);
-                $poly     = rawurlencode($this->encodePolyline($traveled));
-                $lon      = round($pt['longitude'], 6);
-                $lat      = round($pt['latitude'],  6);
+                $lon = round($pt['longitude'], 6);
+                $lat = round($pt['latitude'],  6);
 
-                $overlay = "path-4+0A84FF({$poly}),pin-s+FF453A({$lon},{$lat})";
+                // Bearing: direction of travel from previous frame
+                if ($i > 0) {
+                    $prevBearing = $this->calcBearing($frames[$i - 1], $pt);
+                }
+                $bearing = round($prevBearing, 1);
+
+                // Trail: last TRAIL_PTS traveled points for the path behind the jeep
+                $trailStart = max(0, $i - self::TRAIL_PTS);
+                $trail      = array_slice($frames, $trailStart, $i - $trailStart + 1);
+                $poly       = rawurlencode($this->encodePolyline($trail));
+
+                // Camera: centered on jeep, birds-eye zoom, rotated to direction of travel
+                $camera  = "{$lon},{$lat}," . self::ZOOM . ",{$bearing},0";
+                $overlay = "path-4+0A84FF-0.9({$poly}),pin-s+FF453A({$lon},{$lat})";
+
                 $url = sprintf(
-                    'https://api.mapbox.com/styles/v1/%s/static/%s/%s,%s,%s/%dx%d@2x?access_token=%s&logo=false&attribution=false',
+                    'https://api.mapbox.com/styles/v1/%s/static/%s/%s/%dx%d@2x?access_token=%s&logo=false&attribution=false',
                     self::MAPBOX_STYLE,
                     $overlay,
-                    $centerLon, $centerLat, $zoom,
+                    $camera,
                     self::WIDTH, self::HEIGHT,
                     $token,
                 );
@@ -140,20 +147,14 @@ class VideoExportController extends Controller
         return $out;
     }
 
-    private function calcZoom(float $minLat, float $maxLat, float $minLon, float $maxLon): float
+    private function calcBearing(array $from, array $to): float
     {
-        $latFrac = abs(
-            log(tan(deg2rad($maxLat) / 2 + M_PI / 4)) -
-            log(tan(deg2rad($minLat) / 2 + M_PI / 4))
-        ) / M_PI;
-
-        $lonFrac = abs($maxLon - $minLon) / 360;
-
-        $latZoom = log((self::HEIGHT / 256) / max($latFrac, 1e-6)) / log(2);
-        $lonZoom = log((self::WIDTH  / 256) / max($lonFrac, 1e-6)) / log(2);
-
-        // Subtract 1 for padding, clamp between 1–15
-        return max(1.0, min(round(min($latZoom, $lonZoom) - 1, 1), 15.0));
+        $lat1 = deg2rad($from['latitude']);
+        $lat2 = deg2rad($to['latitude']);
+        $dLon = deg2rad($to['longitude'] - $from['longitude']);
+        $y    = sin($dLon) * cos($lat2);
+        $x    = cos($lat1) * sin($lat2) - sin($lat1) * cos($lat2) * cos($dLon);
+        return (rad2deg(atan2($y, $x)) + 360) % 360;
     }
 
     private function encodePolyline(array $points): string
