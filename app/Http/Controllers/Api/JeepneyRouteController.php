@@ -53,11 +53,10 @@ class JeepneyRouteController extends Controller
         $jeeps = \App\Models\Trip::whereNotIn('status', ['completed', 'cancelled'])
             ->with(['jeep.latestLocation', 'jeepneyRoute:id,name,origin,destination,fare_regular,vehicle_type'])
             ->whereHas('jeep', fn ($q) => $q->where('status', 'active'))
-            ->whereNotNull('jeepney_route_id')
             ->get()
+            ->unique(fn ($trip) => $trip->jeep->id) // one entry per jeep even if multiple open trips
             ->map(function ($trip) {
                 $loc = $trip->jeep->latestLocation;
-                if (! $loc) return null;
 
                 return [
                     'id'              => $trip->jeep->id,
@@ -67,16 +66,15 @@ class JeepneyRouteController extends Controller
                     'trip_id'         => $trip->id,
                     'trip_status'     => $trip->status,
                     'route'           => $trip->jeepneyRoute,
-                    'location'        => [
+                    'location'        => $loc ? [
                         'latitude'    => (float) $loc->latitude,
                         'longitude'   => (float) $loc->longitude,
                         'speed'       => (float) ($loc->speed ?? 0),
                         'heading'     => (float) ($loc->heading ?? 0),
                         'recorded_at' => $loc->recorded_at?->toIso8601String(),
-                    ],
+                    ] : null,
                 ];
             })
-            ->filter()
             ->values();
 
         return response()->json($jeeps);
